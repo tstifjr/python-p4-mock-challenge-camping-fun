@@ -21,18 +21,17 @@ migrate = Migrate(app, db)
 db.init_app(app)
 api = Api(app)
 
-#### not restful
+
 @app.route('/')
 def home():
     return ''
 
-
-###restful
-class Campers(Resource):
-    def get (self):
-        return make_response([c.to_dict(rules = ('-signups',)) for c in Camper.query.all()], 200)
-
-    def post (self):
+@app.route('/campers', methods= ["GET", 'POST'])
+def handle_campers():
+    if request.method == 'GET':
+         return make_response([c.to_dict(rules = ('-signups',)) for c in Camper.query.all()], 200)
+       
+    elif request.method == "POST":
         try:
             new_camper = Camper(name = request.get_json()['name'], age = request.get_json()['age'])
             db.session.add(new_camper)
@@ -42,17 +41,35 @@ class Campers(Resource):
         
         except ValueError as v_error:
             return make_response({'errors' : v_error.args[0]}, 400)
-    
-api.add_resource(Campers, '/campers')
+        except Exception:
+            return make_response({'errors' : 'null given for attr'}, 424)
+        
+# class Campers(Resource):
+#     def get (self):
+#         return make_response([c.to_dict(rules = ('-signups',)) for c in Camper.query.all()], 200)
 
-class CamperById(Resource):
-    def get(self,id):
+#     def post (self):
+#         try:
+#             new_camper = Camper(name = request.get_json()['name'], age = request.get_json()['age'])
+#             db.session.add(new_camper)
+#             db.session.commit()
+
+#             return make_response(new_camper.to_dict(), 201)
+        
+#         except ValueError as v_error:
+#             return make_response({'errors' : v_error.args[0]}, 400)
+    
+# api.add_resource(Campers, '/campers')
+
+@app.route('/campers/<int:id>', methods = ['GET', 'PATCH'])
+def handle_camper(id):
+    if request.method == "GET":
         try:
             return make_response(Camper.query.filter_by(id=id).first().to_dict(), 200)
         except:
             return make_response({'error' : "Camper not found"}, 404)
         
-    def patch(self, id):
+    elif request.method == "PATCH":
         try:
             camper = Camper.query.filter_by(id=id).first()
             data = request.get_json()
@@ -65,27 +82,63 @@ class CamperById(Resource):
         except Exception:
             return make_response({'error' : "Camper not found"}, 404)
 
-api.add_resource(CamperById, '/campers/<int:id>')
+# class CamperById(Resource):
+#     def get(self,id):
+#         try:
+#             return make_response(Camper.query.filter_by(id=id).first().to_dict(), 200)
+#         except:
+#             return make_response({'error' : "Camper not found"}, 404)
+        
+#     def patch(self, id):
+#         try:
+#             camper = Camper.query.filter_by(id=id).first()
+#             data = request.get_json()
+#             for attr in data:
+#                 setattr(camper, attr, data[attr])
+#             db.session.commit()
+#             return make_response(camper.to_dict(), 202)
+#         except ValueError as v_error:
+#             return make_response({'errors' : v_error.args[0]}, 400)
+#         except Exception:
+#             return make_response({'error' : "Camper not found"}, 404)
 
-class Activities(Resource):
-    def get (self):
-        return make_response([a.to_dict() for a in Activity.query.all()], 200)
+# api.add_resource(CamperById, '/campers/<int:id>')
 
-api.add_resource(Activities, '/activities')
 
-class ActivityById(Resource):
-    def delete (self, id):
-        try:
-            db.session.delete(Activity.query.filter_by(id=id).first())
-            db.session.commit()
-            return make_response({}, 204)
-        except:
-            return make_response({"error": "Activity not found"}, 404)
+@app.route('/activities')
+def get_activities():
+    return make_response([a.to_dict() for a in Activity.query.all()], 200)
 
-api.add_resource(ActivityById, '/activities/<int:id>')
+# class Activities(Resource):
+#     def get (self):
+#         return make_response([a.to_dict() for a in Activity.query.all()], 200)
 
-class Signups(Resource):
-    def post (self):
+# api.add_resource(Activities, '/activities')
+
+@app.route('/activities/<int:id>', methods = ["DELETE"])
+def delete_activity (id):
+    try:
+        db.session.delete(Activity.query.filter_by(id=id).first())
+        db.session.commit()
+        return make_response({}, 204)
+    except:
+        return make_response({"error": "Activity not found"}, 404)
+
+# class ActivityById(Resource):
+#     def delete (self, id):
+#         try:
+#             db.session.delete(Activity.query.filter_by(id=id).first())
+#             db.session.commit()
+#             return make_response({}, 204)
+#         except:
+#             return make_response({"error": "Activity not found"}, 404)
+
+# api.add_resource(ActivityById, '/activities/<int:id>')
+
+
+@app.route('/signups', methods = ["POST"])
+def signups():
+    if request.method == 'POST':
         try:
             new_signup = Signup(camper_id = request.get_json()['camper_id'], activity_id = request.get_json()['activity_id'], time = request.get_json()['time'])
             db.session.add(new_signup)
@@ -94,9 +147,22 @@ class Signups(Resource):
             return make_response(new_signup.to_dict(), 201)
         
         except ValueError as v_error:
-            return make_response({'errors' : v_error.args[0]}, 400)
+            return make_response({'errors' : v_error.args[0]}, 400)   
+        except Exception:
+            return make_response({'errors' : 'null given for attr'}, 424)       
+# class Signups(Resource):
+#     def post (self):
+#         try:
+#             new_signup = Signup(camper_id = request.get_json()['camper_id'], activity_id = request.get_json()['activity_id'], time = request.get_json()['time'])
+#             db.session.add(new_signup)
+#             db.session.commit()
 
-api.add_resource(Signups, '/signups')
+#             return make_response(new_signup.to_dict(), 201)
+        
+#         except ValueError as v_error:
+#             return make_response({'errors' : v_error.args[0]}, 400)
+
+# api.add_resource(Signups, '/signups')
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
